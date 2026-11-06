@@ -10,3 +10,13 @@ Element.prototype.hasPointerCapture ??= () => false
 Element.prototype.setPointerCapture ??= () => {}
 Element.prototype.releasePointerCapture ??= () => {}
 Element.prototype.scrollIntoView ??= () => {}
+
+// Sonner's Toaster reads the color-scheme preference.
+window.matchMedia ??= ((query: string) => ({
+  matches: false,
+  media: query,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {}, // next-themes still uses the legacy pair
+  removeListener: () => {},
+})) as unknown as typeof window.matchMedia

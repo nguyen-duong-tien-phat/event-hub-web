@@ -5,6 +5,7 @@ import { RequireRole } from '@/auth/RequireRole'
 import { AppLayout } from '@/components/AppLayout'
 import { EventsPage } from '@/features/events/EventsPage'
 import { LoginPage } from '@/features/login/LoginPage'
+import { ProfilePage } from '@/features/profile/ProfilePage'
 import { UserDetailPage } from '@/features/users/UserDetailPage'
 import { UsersPage } from '@/features/users/UsersPage'
 
@@ -17,6 +18,7 @@ function App() {
           <Route element={<RequireRole roles={['Admin', 'Organizer']} />}>
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="/events" replace />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="events" element={<EventsPage />} />
               <Route element={<RequireRole roles={['Admin']} redirectTo="/events" />}>
                 <Route path="users" element={<UsersPage />} />

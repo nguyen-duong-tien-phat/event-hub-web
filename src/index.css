@@ -10,6 +10,10 @@
     --color-brand-soft: var(--brand-soft);
     --color-success: var(--success);
     --color-success-soft: var(--success-soft);
+    --color-warning: var(--warning);
+    --color-warning-soft: var(--warning-soft);
+    --color-gold: var(--gold);
+    --color-gold-soft: var(--gold-soft);
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
@@ -76,6 +80,10 @@
     --brand-soft: #F1ECFB;
     --success: #15803D;
     --success-soft: #E8F4EC;
+    --warning: #9A5B00;
+    --warning-soft: #FBF1E0;
+    --gold: #7A5A00;
+    --gold-soft: #FBEFC4;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -93,37 +101,46 @@
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    /* The mobile app has no dark theme: these are dark counterparts of the Event Hub colors (ink, warm greys, violet, green). */
+    --background: #121315;
+    --foreground: #F2F2EF;
+    --card: #17191C;
+    --card-foreground: #F2F2EF;
+    --popover: #1D2024;
+    --popover-foreground: #F2F2EF;
+    --primary: #F2F2EF;
+    --primary-foreground: #17191C;
+    --secondary: #22252A;
+    --secondary-foreground: #F2F2EF;
+    --muted: #22252A;
+    --muted-foreground: #9CA0A7;
+    --accent: #22252A;
+    --accent-foreground: #F2F2EF;
+    --destructive: #F0766B;
+    --border: #2A2D31;
+    --input: #2A2D31;
+    --ring: #A78BFA;
+    --brand: #A78BFA;
+    --brand-soft: #2A2145;
+    --success: #4ADE80;
+    --success-soft: #12301E;
+    --warning: #F5B455;
+    --warning-soft: #33260F;
+    --gold: #F2C94C;
+    --gold-soft: #3A2F0B;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --sidebar: #17191C;
+    --sidebar-foreground: #F2F2EF;
+    --sidebar-primary: #F2F2EF;
+    --sidebar-primary-foreground: #17191C;
+    --sidebar-accent: #22252A;
+    --sidebar-accent-foreground: #F2F2EF;
+    --sidebar-border: #2A2D31;
+    --sidebar-ring: #A78BFA;
 }
 
 @layer base {

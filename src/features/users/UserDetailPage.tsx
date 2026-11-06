@@ -1,23 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import { getUser } from '@/api/users'
-import type { Role } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
 import { PageHeader } from '@/components/PageHeader'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { describeError } from '@/lib/errors'
-import { initials } from '@/lib/initials'
-import { BlockButton, RoleSelect, StatusBadge } from './UserControls'
+import { ProfileCard } from './ProfileCard'
+import { BlockButton, RoleSelect } from './UserControls'
 import { UserActivity } from './UserActivity'
 import { useUserUpdate } from './useUserUpdate'
-
-const roleBadge: Record<Role, string> = {
-  Admin: 'bg-primary text-primary-foreground',
-  Organizer: 'bg-brand-soft text-brand',
-  Attendee: 'bg-secondary text-secondary-foreground',
-}
 
 export function UserDetailPage() {
   const { id = '' } = useParams()
@@ -58,26 +50,7 @@ export function UserDetailPage() {
 
       {user && (
         <>
-          <section aria-label="Profile" className="flex flex-wrap items-center gap-5 rounded-xl border p-6">
-            <span
-              aria-hidden="true"
-              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand-soft text-lg font-semibold text-brand"
-            >
-              {initials(user.fullName)}
-            </span>
-            <div className="min-w-60 flex-1 leading-snug">
-              <div className="text-base font-semibold">{user.fullName}</div>
-              <div className="text-muted-foreground">{user.email}</div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className={roleBadge[user.role]}>{user.role}</Badge>
-              <StatusBadge active={user.isActive} />
-              <span className="ml-2 text-[13px] text-muted-foreground">
-                Member since{' '}
-                {new Date(user.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
-            </div>
-          </section>
+          <ProfileCard user={user} />
 
           <UserActivity userId={user.id} name={user.fullName} role={user.role} />
 

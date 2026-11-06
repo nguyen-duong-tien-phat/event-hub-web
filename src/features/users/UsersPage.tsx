@@ -93,14 +93,14 @@ export function UsersPage() {
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="rounded-xl border">
-          <Table>
+        <div className="min-w-0 rounded-xl border">
+          <Table className="min-w-[48rem] table-fixed">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-10 px-4">User</TableHead>
-                <TableHead className="h-10 px-4">Role</TableHead>
-                <TableHead className="h-10 px-4">Status</TableHead>
-                <TableHead className="h-10 px-4 text-right">Account</TableHead>
+                <TableHead className="h-10 w-52 px-4">Role</TableHead>
+                <TableHead className="h-10 w-32 px-4">Status</TableHead>
+                <TableHead className="h-10 w-36 px-4 text-right">Account</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

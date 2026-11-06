@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getEventStats, listEventsByOrganizer, type EventListItem, type EventStats } from '@/api/events'
+import { StatCard } from '@/components/StatCard'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -22,18 +23,9 @@ function status(e: EventListItem, now: number, s?: EventStats) {
   return <Badge className="bg-success-soft text-success">On sale</Badge>
 }
 
-function Stat({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="rounded-xl border p-5">
-      <div className="text-[13px] text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight">{value}</div>
-      <div className="mt-0.5 text-xs text-muted-foreground">{note}</div>
-    </div>
-  )
-}
-
 // What an organizer has put on and sold. The API has no per-organizer totals, so this sums the stats of each event.
-export function UserActivity({ userId, name, role }: { userId: string; name: string; role: string }) {
+// showEvents false keeps just the numbers (the Organizer's own profile).
+export function UserActivity({ userId, name, role, showEvents = true }: { userId: string; name: string; role: string; showEvents?: boolean }) {
   const events = useQuery({ queryKey: ['events', 'by-organizer', userId], queryFn: () => listEventsByOrganizer(userId), enabled: role === 'Organizer' })
   const [now] = useState(() => Date.now()) // fixed at mount so a re-render cannot move an event between upcoming and past
   const items = events.data?.items ?? []
@@ -67,60 +59,62 @@ export function UserActivity({ userId, name, role }: { userId: string; name: str
   return (
     <>
       <section aria-label="Organizer summary" className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
-        <Stat label="Events" value={events.isSuccess ? String(events.data.totalCount) : '…'} note={events.isSuccess ? `${upcoming} upcoming · ${items.length - upcoming} past` : ''} />
-        <Stat label="Tickets sold" value={num(loaded.reduce((n, s) => n + s.ticketsSold, 0))} note="Confirmed bookings only" />
-        <Stat label="Ticket revenue" value={ready ? formatMoney(loaded.reduce((n, s) => n + s.ticketRevenue, 0)) : '…'} note="Without service fees" />
-        <Stat label="Check-ins" value={ready ? `${loaded.reduce((n, s) => n + s.checkedIn, 0)} of ${soldInPast}` : '…'} note="Tickets of past events" />
+        <StatCard label="Events" value={events.isSuccess ? String(events.data.totalCount) : '…'} note={events.isSuccess ? `${upcoming} upcoming · ${items.length - upcoming} past` : ''} />
+        <StatCard label="Tickets sold" value={num(loaded.reduce((n, s) => n + s.ticketsSold, 0))} note="Confirmed bookings only" />
+        <StatCard label="Ticket revenue" value={ready ? formatMoney(loaded.reduce((n, s) => n + s.ticketRevenue, 0)) : '…'} note="Without service fees" />
+        <StatCard label="Check-ins" value={ready ? `${loaded.reduce((n, s) => n + s.checkedIn, 0)} of ${soldInPast}` : '…'} note="Tickets of past events" />
       </section>
       {failed && <p className="text-[13px] text-destructive">Some numbers could not be loaded and are left out of the totals.</p>}
 
-      <section aria-labelledby="events-h" className="overflow-hidden rounded-xl border">
-        <h2 id="events-h" className="px-6 py-5 text-base font-semibold">
-          Events by {name}
-        </h2>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="h-10 px-6">Event</TableHead>
-              <TableHead className="h-10 px-4">Date</TableHead>
-              <TableHead className="h-10 px-4">Tickets sold</TableHead>
-              <TableHead className="h-10 px-4 text-right">Revenue</TableHead>
-              <TableHead className="h-10 pr-6 pl-4">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.isPending && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  Loading…
-                </TableCell>
+      {showEvents && (
+        <section aria-labelledby="events-h" className="overflow-hidden rounded-xl border">
+          <h2 id="events-h" className="px-6 py-5 text-base font-semibold">
+            Events by {name}
+          </h2>
+          <Table className="min-w-[48rem] table-fixed">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-10 px-6">Event</TableHead>
+                <TableHead className="h-10 w-52 px-4">Date</TableHead>
+                <TableHead className="h-10 w-36 px-4">Tickets sold</TableHead>
+                <TableHead className="h-10 w-36 px-4 text-right">Revenue</TableHead>
+                <TableHead className="h-10 w-32 pr-6 pl-4">Status</TableHead>
               </TableRow>
-            )}
-            {events.isSuccess && items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No events yet.
-                </TableCell>
-              </TableRow>
-            )}
-            {items.map((e, i) => {
-              const s = stats[i].data
-              return (
-                <TableRow key={e.id}>
-                  <TableCell className="px-6 py-3 font-medium">{e.title}</TableCell>
-                  <TableCell className="px-4 py-3 text-foreground/80">{when(e.startsAt)}</TableCell>
-                  <TableCell className="px-4 py-3 text-foreground/80">{s ? `${s.ticketsSold} of ${totalTickets(s)}` : stats[i].isError ? '–' : '…'}</TableCell>
-                  <TableCell className="px-4 py-3 text-right font-medium">{s ? formatMoney(s.ticketRevenue) : stats[i].isError ? '–' : '…'}</TableCell>
-                  <TableCell className="py-3 pr-6 pl-4">{status(e, now, s)}</TableCell>
+            </TableHeader>
+            <TableBody>
+              {events.isPending && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    Loading…
+                  </TableCell>
                 </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-        {events.isSuccess && events.data.totalCount > items.length && (
-          <p className="border-t px-6 py-3 text-[13px] text-muted-foreground">Showing the first {items.length} events</p>
-        )}
-      </section>
+              )}
+              {events.isSuccess && items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No events yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {items.map((e, i) => {
+                const s = stats[i].data
+                return (
+                  <TableRow key={e.id}>
+                    <TableCell className="truncate px-6 py-3 font-medium">{e.title}</TableCell>
+                    <TableCell className="px-4 py-3 text-foreground/80">{when(e.startsAt)}</TableCell>
+                    <TableCell className="px-4 py-3 text-foreground/80">{s ? `${s.ticketsSold} of ${totalTickets(s)}` : stats[i].isError ? '–' : '…'}</TableCell>
+                    <TableCell className="px-4 py-3 text-right font-medium">{s ? formatMoney(s.ticketRevenue) : stats[i].isError ? '–' : '…'}</TableCell>
+                    <TableCell className="py-3 pr-6 pl-4">{status(e, now, s)}</TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+          {events.isSuccess && events.data.totalCount > items.length && (
+            <p className="border-t px-6 py-3 text-[13px] text-muted-foreground">Showing the first {items.length} events</p>
+          )}
+        </section>
+      )}
     </>
   )
 }
