@@ -3,6 +3,7 @@ import { AuthProvider } from '@/auth/AuthProvider'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { RequireRole } from '@/auth/RequireRole'
 import { AppLayout } from '@/components/AppLayout'
+import { EventDetailPage } from '@/features/events/EventDetailPage'
 import { EventFormPage } from '@/features/events/EventFormPage'
 import { EventsPage } from '@/features/events/EventsPage'
 import { LoginPage } from '@/features/login/LoginPage'
@@ -22,6 +23,7 @@ function App() {
               <Route path="profile" element={<ProfilePage />} />
               <Route path="events" element={<EventsPage />} />
               <Route path="events/new" element={<EventFormPage />} />
+              <Route path="events/:id" element={<EventDetailPage />} />
               <Route path="events/:id/edit" element={<EventFormPage />} />
               <Route element={<RequireRole roles={['Admin']} redirectTo="/events" />}>
                 <Route path="users" element={<UsersPage />} />
