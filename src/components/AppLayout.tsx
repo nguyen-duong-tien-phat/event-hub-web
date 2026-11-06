@@ -27,8 +27,10 @@ export function AppLayout() {
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null)
 
   return (
-    <div className="flex min-h-svh flex-wrap">
-      <aside className="flex flex-[1_1_15rem] flex-col gap-4 border-r bg-sidebar px-3 py-4">
+    // From md up the window is the frame: sidebar and header stay put and only <main> scrolls.
+    // Narrower, the sidebar stacks on top and the whole page scrolls.
+    <div className="flex min-h-svh flex-col md:h-svh md:flex-row md:overflow-hidden">
+      <aside className="flex flex-col gap-4 border-b bg-sidebar px-3 py-4 md:w-60 md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
         <div className="flex min-h-8 items-center gap-2 px-2.5">
           <span
             aria-hidden="true"
@@ -67,9 +69,12 @@ export function AppLayout() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-[999_1_35rem] flex-col">
-        <header ref={setHeaderSlot} className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b px-8" />
-        <main className="min-w-0 flex-1 p-8">
+      <div className="flex min-w-0 flex-1 flex-col md:min-h-0">
+        <header
+          ref={setHeaderSlot}
+          className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-8"
+        />
+        <main className="min-w-0 flex-1 p-8 md:overflow-y-auto">
           <PageHeaderSlot.Provider value={headerSlot}>
             <Outlet />
           </PageHeaderSlot.Provider>

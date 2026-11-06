@@ -15,6 +15,8 @@ export function listUsers({ search, isActive, page, pageSize }: UserFilters) {
   return api<Paged<UserDto>>(`/users?${query}`)
 }
 
+export const getUser = (id: string) => api<UserDto>(`/users/${id}`)
+
 // 409 when the email is taken.
 export const createUser = (body: { fullName: string; email: string; password: string; role: Role }) =>
   api<UserDto>('/users', { method: 'POST', body })

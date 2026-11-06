@@ -1,31 +1,28 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Info, Search } from 'lucide-react'
 import { useState } from 'react'
-import { toast } from 'sonner'
-import { changeRole, listUsers, setActive } from '@/api/users'
-import { ROLES, type Role, type UserDto } from '@/api/types'
+import { Link, useNavigate } from 'react-router'
+import { listUsers } from '@/api/users'
+import type { UserDto } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
 import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { describeError } from '@/lib/errors'
 import { initials } from '@/lib/initials'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 import { CreateUserDialog } from './CreateUserDialog'
+import { BlockButton, RoleSelect, StatusBadge } from './UserControls'
+import { useUserUpdate, type Change } from './useUserUpdate'
 
 const PAGE_SIZE = 10
 type Status = 'all' | 'active' | 'blocked'
 
-type Change = { id: string } & ({ role: Role } | { isActive: boolean })
-
 export function UsersPage() {
   const { user: me } = useAuth()
-  const queryClient = useQueryClient()
   const [searchInput, setSearchInput] = useState('')
   const [status, setStatus] = useState<Status>('all')
   const [page, setPage] = useState(1)
@@ -38,12 +35,7 @@ export function UsersPage() {
     placeholderData: keepPreviousData,
   })
 
-  const update = useMutation({
-    mutationFn: (change: Change) => ('role' in change ? changeRole(change.id, change.role) : setActive(change.id, change.isActive)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
-    onError: (e) => toast.error(describeError(e)),
-  })
-  const busyId = update.isPending ? update.variables.id : undefined
+  const { update, busyId } = useUserUpdate()
 
   const data = users.data
 
@@ -132,12 +124,7 @@ export function UsersPage() {
                   user={u}
                   isMe={u.id === me?.id}
                   busy={busyId === u.id}
-                  onChange={(change) =>
-                    update.mutate(change, {
-                      onSuccess: () =>
-                        toast.success('role' in change ? `${u.fullName} is now ${change.role}` : `${u.fullName} was ${change.isActive ? 'unblocked' : 'blocked'}`),
-                    })
-                  }
+                  onChange={(change) => update(u, change)}
                 />
               ))}
             </TableBody>
@@ -162,9 +149,19 @@ export function UsersPage() {
   )
 }
 
+// Clicks on these keep their own meaning; anywhere else on the row opens the user.
+const INTERACTIVE = 'a,button,input,select,[role=combobox],[role=listbox],[role=option]'
+
 function UserRow({ user, isMe, busy, onChange }: { user: UserDto; isMe: boolean; busy: boolean; onChange: (c: Change) => void }) {
+  const navigate = useNavigate()
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer"
+      onClick={(e) => {
+        // The role menu is portalled but its clicks still bubble here through React, so test the DOM target.
+        if (!(e.target as HTMLElement).closest(INTERACTIVE)) void navigate(`/users/${user.id}`)
+      }}
+    >
       <TableCell className="px-4 py-3">
         <div className="flex items-center gap-3">
           <span
@@ -174,45 +171,22 @@ function UserRow({ user, isMe, busy, onChange }: { user: UserDto; isMe: boolean;
             {initials(user.fullName)}
           </span>
           <div className="leading-snug">
-            <div className="font-medium">
+            <Link to={`/users/${user.id}`} className="font-medium hover:underline">
               {user.fullName}
               {isMe && ' (you)'}
-            </div>
+            </Link>
             <div className="text-[13px] text-muted-foreground">{user.email}</div>
           </div>
         </div>
       </TableCell>
       <TableCell className="px-4 py-3">
-        <Select value={user.role} disabled={isMe || busy} onValueChange={(role) => onChange({ id: user.id, role: role as Role })}>
-          <SelectTrigger aria-label={`Role of ${user.fullName}`} className="h-9 min-w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {ROLES.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <RoleSelect user={user} disabled={isMe || busy} onChange={(role) => onChange({ role })} />
       </TableCell>
       <TableCell className="px-4 py-3">
-        {user.isActive ? (
-          <Badge className="bg-success-soft text-success">Active</Badge>
-        ) : (
-          <Badge variant="destructive">Blocked</Badge>
-        )}
+        <StatusBadge active={user.isActive} />
       </TableCell>
       <TableCell className="px-4 py-3 text-right">
-        <Button
-          variant="outline"
-          size="sm"
-          className={user.isActive ? 'h-8 text-destructive' : 'h-8'}
-          disabled={isMe || busy}
-          onClick={() => onChange({ id: user.id, isActive: !user.isActive })}
-        >
-          {user.isActive ? 'Block' : 'Unblock'}
-        </Button>
+        <BlockButton user={user} disabled={isMe || busy} onClick={() => onChange({ isActive: !user.isActive })} />
       </TableCell>
     </TableRow>
   )

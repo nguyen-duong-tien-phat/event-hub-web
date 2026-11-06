@@ -47,3 +47,13 @@ test('puts the title and action into the layout header, not the page body', () =
   // The account block now closes the sidebar.
   expect(within(screen.getByRole('complementary')).getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
 })
+
+test('shows a back link before the title', () => {
+  render(
+    <MemoryRouter>
+      <PageHeader title="Minh Le" back={{ to: '/users', label: 'Users' }} />
+    </MemoryRouter>,
+  )
+  expect(screen.getByRole('link', { name: 'Users' })).toHaveAttribute('href', '/users')
+  expect(screen.getByRole('heading', { level: 1, name: 'Minh Le' })).toBeInTheDocument()
+})

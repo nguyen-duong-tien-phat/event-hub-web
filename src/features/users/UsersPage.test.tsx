@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest'
 import { API_URL } from '@/api/client'
 import type { UserDto } from '@/api/types'
@@ -45,6 +46,8 @@ afterEach(() => {
 })
 afterAll(() => server.close())
 
+const LocationProbe = () => <p data-testid="path">{useLocation().pathname}</p>
+
 function renderPage() {
   const auth = {
     user: { id: 'u1', email: 'ann@example.com', fullName: 'Ann Tran', role: 'Admin' as const },
@@ -55,7 +58,10 @@ function renderPage() {
   render(
     <AuthContext.Provider value={auth}>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <UsersPage />
+        <MemoryRouter>
+          <UsersPage />
+          <LocationProbe />
+        </MemoryRouter>
       </QueryClientProvider>
     </AuthContext.Provider>,
   )
@@ -183,4 +189,19 @@ test('creates a user with the role picked in the dialog', async () => {
       body: { fullName: 'Bao Nguyen', email: 'bao@example.com', role: 'Organizer', password: 'longenough1' },
     }),
   )
+})
+
+test('clicking a row opens that user, but clicking its role menu or Block button does not', async () => {
+  const click = userEvent.setup()
+  renderPage()
+  await screen.findByText('Minh Le')
+
+  await click.click(within(rowOf('Minh Le')).getByRole('combobox', { name: 'Role of Minh Le' }))
+  await click.keyboard('{Escape}')
+  await click.click(within(rowOf('Minh Le')).getByRole('button', { name: 'Block' }))
+  expect(screen.getByTestId('path')).toHaveTextContent('/')
+  expect(screen.getByTestId('path').textContent).not.toContain('/users/')
+
+  await click.click(screen.getByText('minh@example.com'))
+  expect(screen.getByTestId('path')).toHaveTextContent('/users/u2')
 })

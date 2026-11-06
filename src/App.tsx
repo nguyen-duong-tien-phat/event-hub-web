@@ -5,6 +5,7 @@ import { RequireRole } from '@/auth/RequireRole'
 import { AppLayout } from '@/components/AppLayout'
 import { EventsPage } from '@/features/events/EventsPage'
 import { LoginPage } from '@/features/login/LoginPage'
+import { UserDetailPage } from '@/features/users/UserDetailPage'
 import { UsersPage } from '@/features/users/UsersPage'
 
 function App() {
@@ -17,8 +18,9 @@ function App() {
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="/events" replace />} />
               <Route path="events" element={<EventsPage />} />
-              <Route element={<RequireRole roles={['Admin']} />}>
+              <Route element={<RequireRole roles={['Admin']} redirectTo="/events" />}>
                 <Route path="users" element={<UsersPage />} />
+                <Route path="users/:id" element={<UserDetailPage />} />
               </Route>
               <Route path="*" element={<p>Page not found.</p>} />
             </Route>

@@ -1,12 +1,15 @@
-import { Outlet } from 'react-router'
+import { Navigate, Outlet } from 'react-router'
 import type { Role } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { useAuth } from './useAuth'
 
 // Hides pages for convenience only: the API decides who may do what.
-export function RequireRole({ roles }: { roles: Role[] }) {
+// redirectTo: send a signed-in user without the role there (an Organizer who opens /users goes to the events page)
+// instead of showing "No access".
+export function RequireRole({ roles, redirectTo }: { roles: Role[]; redirectTo?: string }) {
   const { user, logout } = useAuth()
   if (user && roles.includes(user.role)) return <Outlet />
+  if (user && redirectTo) return <Navigate to={redirectTo} replace />
 
   return (
     <main className="flex flex-col items-start gap-3 p-8">
