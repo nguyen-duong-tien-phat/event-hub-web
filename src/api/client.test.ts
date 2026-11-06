@@ -79,3 +79,34 @@ test('login does not try to refresh on 401', async () => {
   })
   expect(refreshCalls).toBe(0)
 })
+
+test('a refresh uses the token stored at that moment, since another tab may have rotated it', async () => {
+  let sent: unknown
+  server.use(
+    http.get(`${API_URL}/things`, ({ request }) =>
+      request.headers.get('Authorization') === 'Bearer new'
+        ? HttpResponse.json({ ok: true })
+        : HttpResponse.json({ message: 'expired' }, { status: 401 }),
+    ),
+    http.post(`${API_URL}/auth/refresh`, async ({ request }) => {
+      sent = await request.json()
+      return HttpResponse.json({ ...user, token: 'new', refreshToken: 'r3' })
+    }),
+  )
+  localStorage.setItem('eventhub.refreshToken', 'r-from-other-tab')
+
+  await api('/things')
+
+  expect(sent).toEqual({ refreshToken: 'r-from-other-tab' })
+})
+
+test('signing out in another tab signs this tab out', () => {
+  const seen = vi.fn()
+  const unsubscribe = subscribe(seen)
+
+  localStorage.removeItem('eventhub.refreshToken')
+  window.dispatchEvent(new StorageEvent('storage', { key: 'eventhub.refreshToken', newValue: null }))
+
+  unsubscribe()
+  expect(seen).toHaveBeenLastCalledWith(null)
+})

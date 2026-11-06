@@ -2,8 +2,8 @@ import type { AuthResponse, SessionUser } from './types'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-// shortcut: the refresh token lives in sessionStorage (readable by any script on the page);
-// move it to an httpOnly cookie if the API ever sets one.
+// shortcut: the refresh token lives in localStorage, so a new tab or a restart stays signed in. Any script on the page
+// can read it; move it to an httpOnly cookie if the API ever sets one.
 const REFRESH_KEY = 'eventhub.refreshToken'
 
 export class ApiError extends Error {
@@ -30,17 +30,17 @@ export function subscribe(listener: (user: SessionUser | null) => void) {
   }
 }
 
-export const storedRefreshToken = () => sessionStorage.getItem(REFRESH_KEY)
+export const storedRefreshToken = () => localStorage.getItem(REFRESH_KEY)
 
 export function setSession({ token, refreshToken, ...user }: AuthResponse) {
   accessToken = token
-  sessionStorage.setItem(REFRESH_KEY, refreshToken)
+  localStorage.setItem(REFRESH_KEY, refreshToken)
   listeners.forEach((l) => l(user))
 }
 
 export function clearSession() {
   accessToken = null
-  sessionStorage.removeItem(REFRESH_KEY)
+  localStorage.removeItem(REFRESH_KEY)
   listeners.forEach((l) => l(null))
 }
 
@@ -88,16 +88,30 @@ export function refresh(): Promise<void> {
   return refreshing
 }
 
-async function doRefresh() {
-  const refreshToken = storedRefreshToken()
-  if (!refreshToken) throw new ApiError(401, 'Session expired. Please log in again.')
-  const res = await send('/auth/refresh', 'POST', { refreshToken }, null)
-  if (!res.ok) {
-    clearSession()
-    throw await toError(res)
-  }
-  setSession(await res.json())
+// Tabs share the stored refresh token and it works once, so they refresh one at a time (a Web Lock). The token is
+// read inside the turn: a tab that waited uses what the other tab just stored, not the token that tab already spent.
+const inTurn = <T>(fn: () => Promise<T>) => (navigator.locks ? navigator.locks.request('eventhub-refresh', fn) : fn())
+
+function doRefresh() {
+  return inTurn(async () => {
+    const refreshToken = storedRefreshToken()
+    if (!refreshToken) throw new ApiError(401, 'Session expired. Please log in again.')
+    const res = await send('/auth/refresh', 'POST', { refreshToken }, null)
+    if (!res.ok) {
+      clearSession()
+      throw await toError(res)
+    }
+    setSession(await res.json())
+  })
 }
+
+// Another tab signed out (or its refresh failed and removed the token): leave this tab signed out too.
+window.addEventListener('storage', (e) => {
+  if ((e.key === REFRESH_KEY || e.key === null) && storedRefreshToken() === null && accessToken !== null) {
+    accessToken = null
+    listeners.forEach((l) => l(null))
+  }
+})
 
 interface Options {
   method?: string
