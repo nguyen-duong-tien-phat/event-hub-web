@@ -43,11 +43,12 @@ export const listEventBookings = (eventId: string, page: number, pageSize: numbe
   api<Paged<Booking>>(`/bookings/by-event/${eventId}?${new URLSearchParams({ page: String(page), pageSize: String(pageSize) })}`)
 
 // Bookings across events: all for an Admin, those of their own events for an Organizer; eventId, userId and status narrow it.
-export const listManagedBookings = ({ eventId, userId, status, page, pageSize }: { eventId?: string; userId?: string; status?: BookingStatus; page: number; pageSize: number }) => {
+export const listManagedBookings = ({ eventId, userId, status, cursor, page, pageSize }: { eventId?: string; userId?: string; status?: BookingStatus; cursor?: string; page: number; pageSize: number }) => {
   const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   if (eventId) query.set('eventId', eventId)
   if (userId) query.set('userId', userId) // one buyer's history
   if (status) query.set('status', status)
+  if (cursor) query.set('cursor', cursor) // keyset paging; page is then ignored
   return api<Paged<Booking>>(`/bookings/managed?${query}`)
 }
 

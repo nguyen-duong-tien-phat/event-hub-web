@@ -8,10 +8,11 @@ import { useAuth } from '@/auth/useAuth'
 import { BookingsTable } from '@/components/BookingsTable'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
-import { Pagination } from '@/components/Pagination'
+import { CursorPagination } from '@/components/Pagination'
 import { SearchSelect } from '@/components/SearchSelect'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { describeError } from '@/lib/errors'
+import { useCursorStack } from '@/lib/useCursorStack'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 const PAGE_SIZE = 10
@@ -25,7 +26,7 @@ export function BookingsPage() {
   const queryClient = useQueryClient()
   const [params, setParams] = useSearchParams()
   const [tab, setTab] = useState<(typeof TABS)[number]>('All')
-  const [page, setPage] = useState(1)
+  const pages = useCursorStack()
   const [toCancel, setToCancel] = useState<Booking | null>(null)
 
   // An Organizer picks among their own events, an Admin among all. The API searches by title, 20 at a time.
@@ -46,8 +47,8 @@ export function BookingsPage() {
 
   const status = tab === 'All' ? undefined : tab
   const bookings = useQuery({
-    queryKey: ['events', 'bookings', 'managed', eventId, status, page],
-    queryFn: () => listManagedBookings({ eventId: eventId === ALL ? undefined : eventId, status, page, pageSize: PAGE_SIZE }),
+    queryKey: ['events', 'bookings', 'managed', eventId, status, pages.cursor],
+    queryFn: () => listManagedBookings({ eventId: eventId === ALL ? undefined : eventId, status, cursor: pages.cursor, page: 1, pageSize: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
   const cancel = useMutation({
@@ -90,7 +91,7 @@ export function BookingsPage() {
               value={eventId}
               onChange={(v) => {
                 setParams(v === ALL ? {} : { event: v })
-                setPage(1)
+                pages.reset()
               }}
               options={options}
               searchPlaceholder="Search events…"
@@ -105,7 +106,7 @@ export function BookingsPage() {
                   aria-pressed={tab === t}
                   onClick={() => {
                     setTab(t)
-                    setPage(1)
+                    pages.reset()
                   }}
                   className={`h-7.5 rounded-md px-3 text-sm font-medium ${tab === t ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
                 >
@@ -126,7 +127,7 @@ export function BookingsPage() {
           </div>
 
           {data && (
-            <Pagination page={data.page} totalPages={data.totalPages} totalCount={data.totalCount} pageSize={data.pageSize} noun="bookings" onPageChange={setPage} />
+            <CursorPagination depth={pages.depth} count={data.items.length} pageSize={data.pageSize} totalCount={data.totalCount} nextCursor={data.nextCursor} noun="bookings" onPrev={pages.prev} onNext={pages.next} />
           )}
           <p className="text-[13px] text-muted-foreground">Cancelling a paid booking refunds it and puts the tickets back on sale.</p>
         </>

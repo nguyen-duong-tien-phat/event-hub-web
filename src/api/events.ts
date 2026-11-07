@@ -47,6 +47,7 @@ export interface EventFilters {
   category: string; // '' for all
   sort: EventSort;
   organizerId?: string;
+  cursor?: string; // keyset paging: the previous page's nextCursor; page is then ignored
   page: number;
   pageSize: number;
 }
@@ -56,6 +57,7 @@ export function listEvents({
   category,
   sort,
   organizerId,
+  cursor,
   page,
   pageSize,
 }: EventFilters) {
@@ -67,6 +69,7 @@ export function listEvents({
   if (search) query.set("search", search);
   if (category) query.set("category", category);
   if (organizerId) query.set("organizerId", organizerId);
+  if (cursor) query.set("cursor", cursor);
   return api<Paged<EventListItem>>(`/events?${query}`);
 }
 
@@ -79,11 +82,35 @@ export const updateEvent = (id: string, body: EventPatch) =>
 export const deleteEvent = (id: string) =>
   api<void>(`/events/${id}`, { method: "DELETE" }); // 409 when it has bookings
 
-// shortcut: first 100 events only (the API's page size limit), page through if an organizer ever has more.
-export const listEventsByOrganizer = (organizerId: string) =>
-  api<Paged<EventListItem>>(
-    `/events?${new URLSearchParams({ organizerId, pageSize: "100", sort: "StartsAtDesc" })}`,
-  );
+// GET /events/sales: an organizer's totals and per-event numbers in one request (offset paging, no cursor).
+export interface SalesSummary {
+  events: number
+  upcoming: number
+  past: number
+  ticketsSold: number // confirmed bookings only
+  ticketRevenue: number // without the service fee
+  checkedIn: number
+  ticketsOfPastEvents: number // seats of events that already started
+  ticketsSoldOfPastEvents: number // the denominator of "N checked in of M"
+}
+
+export interface EventSales {
+  id: string
+  title: string
+  startsAt: string // UTC
+  location: string
+  totalQuantity: number
+  remainingQuantity: number
+  ticketsSold: number
+  ticketRevenue: number
+  checkedIn: number
+}
+
+export const getEventsSales = ({ organizerId, page, pageSize }: { organizerId?: string; page: number; pageSize: number }) => {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (organizerId) query.set('organizerId', organizerId)
+  return api<{ summary: SalesSummary; events: Paged<EventSales> }>(`/events/sales?${query}`)
+}
 
 // One ticket type in GET /events/{id}/stats.
 export interface TicketStats {
@@ -122,10 +149,11 @@ export interface EventAdmission {
 
 export const listEventAdmissions = (
   eventId: string,
-  { checkedIn, search, page, pageSize }: { checkedIn?: boolean; search: string; page: number; pageSize: number },
+  { checkedIn, search, cursor, page, pageSize }: { checkedIn?: boolean; search: string; cursor?: string; page: number; pageSize: number },
 ) => {
   const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   if (checkedIn !== undefined) query.set('checkedIn', String(checkedIn))
   if (search) query.set('search', search)
+  if (cursor) query.set('cursor', cursor)
   return api<Paged<EventAdmission>>(`/events/${eventId}/admissions?${query}`)
 }

@@ -146,3 +146,34 @@ test('a 403 shows an alert instead of data', async () => {
   expect(await screen.findByText("You don't have permission to do that.")).toBeInTheDocument()
   expect(screen.queryByText('Bao Nguyen')).not.toBeInTheDocument()
 })
+
+test('Next sends the nextCursor, and changing the status tab returns to the first page', async () => {
+  server.use(
+    http.get(`${API_URL}/bookings/managed`, ({ request }) => {
+      const url = new URL(request.url)
+      bookingRequests.push(url)
+      const second = url.searchParams.get('cursor') === 'c2'
+      return HttpResponse.json({
+        items: [booking(second ? 'b2' : 'b1', second ? 'Second Buyer' : 'First Buyer', 'Confirmed')],
+        page: 1,
+        pageSize: 10,
+        totalCount: 11,
+        totalPages: 2,
+        nextCursor: second ? null : 'c2',
+      })
+    }),
+  )
+  const click = userEvent.setup()
+  renderAt('/bookings')
+  expect(await screen.findByText('First Buyer')).toBeInTheDocument()
+  expect(bookingRequests[0].searchParams.has('cursor')).toBe(false)
+
+  await click.click(screen.getByRole('button', { name: 'Next' }))
+  expect(await screen.findByText('Second Buyer')).toBeInTheDocument()
+  expect(bookingRequests.at(-1)!.searchParams.get('cursor')).toBe('c2')
+  expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  await click.click(screen.getByRole('button', { name: 'Pending' }))
+  await waitFor(() => expect(bookingRequests.at(-1)!.searchParams.get('status')).toBe('Pending'))
+  expect(bookingRequests.at(-1)!.searchParams.has('cursor')).toBe(false)
+})

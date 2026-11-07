@@ -22,33 +22,13 @@ const server = setupServer(
       updatedAt: '2026-03-03T00:00:00Z',
     })
   }),
-  http.get(`${API_URL}/events`, ({ request }) => {
-    requested.push(`/events?organizerId=${new URL(request.url).searchParams.get('organizerId')}`)
+  http.get(`${API_URL}/events/sales`, ({ request }) => {
+    requested.push(`/events/sales?organizerId=${new URL(request.url).searchParams.get('organizerId')}`)
     return HttpResponse.json({
-      items: [
-        {
-          id: 'e1',
-          title: 'Jazz in the Park',
-          startsAt: '2099-11-21T16:00:00Z',
-          location: 'Riverside Park',
-          imageUrl: 'http://storage.test/a.jpg',
-          category: 'Concerts',
-          minPrice: 12,
-          maxPrice: 12,
-          totalQuantity: 200,
-          remainingQuantity: 180,
-          organizer: { id: 'u2', fullName: 'Minh Le' },
-        },
-      ],
-      page: 1,
-      pageSize: 100,
-      totalCount: 1,
-      totalPages: 1,
+      summary: { events: 1, upcoming: 1, past: 0, ticketsSold: 20, ticketRevenue: 240, checkedIn: 0, ticketsOfPastEvents: 0, ticketsSoldOfPastEvents: 0 },
+      events: { items: [], page: 1, pageSize: 10, totalCount: 1, totalPages: 1, nextCursor: null },
     })
   }),
-  http.get(`${API_URL}/events/e1/stats`, () =>
-    HttpResponse.json({ eventId: 'e1', ticketRevenue: 240, ticketsSold: 20, checkedIn: 0, tickets: [{ totalQuantity: 200, remainingQuantity: 180 }] }),
-  ),
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(() => {
@@ -81,7 +61,7 @@ test("an Organizer's own profile shows their numbers, but no events table and no
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
   expect(screen.queryByText('Jazz in the Park')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /block/i })).not.toBeInTheDocument()
-  expect(requested).toContain('/events?organizerId=u2')
+  expect(requested).toContain('/events/sales?organizerId=u2')
 })
 
 test('an Admin profile has no numbers and asks for no events', async () => {

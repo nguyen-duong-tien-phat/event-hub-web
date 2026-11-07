@@ -26,13 +26,19 @@ const users: Record<string, UserDto> = {
 }
 
 const day = 86_400_000
-const events = [
-  { id: 'e1', title: 'Jazz in the Park', startsAt: new Date(Date.now() + 30 * day).toISOString() },
-  { id: 'e2', title: 'Autumn Wine Tasting', startsAt: new Date(Date.now() - 30 * day).toISOString() },
-]
-const stats: Record<string, object> = {
-  e1: { eventId: 'e1', ticketRevenue: 240, ticketsSold: 20, checkedIn: 0, tickets: [{ totalQuantity: 200, remainingQuantity: 180 }] },
-  e2: { eventId: 'e2', ticketRevenue: 100, ticketsSold: 10, checkedIn: 8, tickets: [{ totalQuantity: 10, remainingQuantity: 0 }] },
+const sales = {
+  summary: { events: 2, upcoming: 1, past: 1, ticketsSold: 30, ticketRevenue: 340, checkedIn: 8, ticketsOfPastEvents: 10, ticketsSoldOfPastEvents: 10 },
+  events: {
+    items: [
+      { id: 'e1', title: 'Jazz in the Park', startsAt: new Date(Date.now() + 30 * day).toISOString(), location: 'Riverside Park', totalQuantity: 200, remainingQuantity: 180, ticketsSold: 20, ticketRevenue: 240, checkedIn: 0 },
+      { id: 'e2', title: 'Autumn Wine Tasting', startsAt: new Date(Date.now() - 30 * day).toISOString(), location: 'Studio 9', totalQuantity: 10, remainingQuantity: 0, ticketsSold: 10, ticketRevenue: 100, checkedIn: 8 },
+    ],
+    page: 1,
+    pageSize: 10,
+    totalCount: 2,
+    totalPages: 1,
+    nextCursor: null,
+  },
 }
 
 const booking = (id: string, status: string, checkedInCount: number) => ({
@@ -51,22 +57,21 @@ const booking = (id: string, status: string, checkedInCount: number) => ({
 
 let historyRequests: URL[] = []
 let history: ReturnType<typeof booking>[] = [booking('b1', 'Confirmed', 1), booking('b2', 'Cancelled', 0)]
-let eventRequests: URL[] = []
+let salesRequests: URL[] = []
 let patches: { url: string; body: unknown }[] = []
 const server = setupServer(
   http.get(`${API_URL}/users/:id`, ({ params }) => {
     const found = users[params.id as string]
     return found ? HttpResponse.json(found) : new HttpResponse(null, { status: 404 })
   }),
-  http.get(`${API_URL}/events`, ({ request }) => {
-    eventRequests.push(new URL(request.url))
-    return HttpResponse.json({ items: events, page: 1, pageSize: 100, totalCount: 2, totalPages: 1 })
+  http.get(`${API_URL}/events/sales`, ({ request }) => {
+    salesRequests.push(new URL(request.url))
+    return HttpResponse.json(sales)
   }),
   http.get(`${API_URL}/bookings/managed`, ({ request }) => {
     historyRequests.push(new URL(request.url))
     return HttpResponse.json({ items: history, page: 1, pageSize: 10, totalCount: history.length, totalPages: 1 })
   }),
-  http.get(`${API_URL}/events/:id/stats`, ({ params }) => HttpResponse.json(stats[params.id as string])),
   http.patch(`${API_URL}/users/:id/:field`, async ({ request }) => {
     patches.push({ url: new URL(request.url).pathname, body: await request.json() })
     return HttpResponse.json(users.u2)
@@ -75,7 +80,7 @@ const server = setupServer(
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   server.resetHandlers()
-  eventRequests = []
+  salesRequests = []
   historyRequests = []
   history = [booking('b1', 'Confirmed', 1), booking('b2', 'Cancelled', 0)]
   patches = []
@@ -117,10 +122,11 @@ test('an organizer shows the profile, their events and the summed numbers', asyn
   expect(within(jazz).getByText('20 of 200')).toBeInTheDocument()
   expect(within(jazz).getByText('On sale')).toBeInTheDocument()
   expect(within(screen.getByText('Autumn Wine Tasting').closest('tr')!).getByText('Past')).toBeInTheDocument()
-  expect(eventRequests[0].searchParams.get('organizerId')).toBe('u2')
+  expect(salesRequests).toHaveLength(1) // one request, not one per event
+  expect(salesRequests[0].searchParams.get('organizerId')).toBe('u2')
 })
 
-test("an attendee shows their booking history with check-in text, and no events or stats requests", async () => {
+test("an attendee shows their booking history with check-in text, and no sales request", async () => {
   renderAt('u3')
 
   expect(await screen.findByRole('heading', { name: 'History' })).toBeInTheDocument()
@@ -130,7 +136,7 @@ test("an attendee shows their booking history with check-in text, and no events 
   expect(within(confirmed).getByText('1 of 2 checked in')).toBeInTheDocument()
   expect(within(confirmed).getByText('$24.24')).toBeInTheDocument()
   expect(historyRequests[0].searchParams.get('userId')).toBe('u3')
-  expect(eventRequests).toEqual([])
+  expect(salesRequests).toEqual([])
   expect(screen.queryByText(/No activity to show/)).not.toBeInTheDocument()
 })
 

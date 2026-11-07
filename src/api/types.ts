@@ -15,6 +15,7 @@ export interface Paged<T> {
   pageSize: number
   totalCount: number
   totalPages: number
+  nextCursor?: string | null // keyset paging: pass it as `cursor` for the next page; null on the last page
 }
 
 export interface UserDto extends SessionUser {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { listEventAdmissions } from '@/api/events'
 import { CopyButton } from '@/components/CopyButton'
-import { Pagination } from '@/components/Pagination'
+import { CursorPagination } from '@/components/Pagination'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -12,6 +12,7 @@ import { groupCode } from '@/lib/checkIn'
 import { formatDateTime } from '@/lib/dates'
 import { describeError } from '@/lib/errors'
 import { stockBadgeClass } from '@/lib/stock'
+import { useCursorStack } from '@/lib/useCursorStack'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 const PAGE_SIZE = 10
@@ -25,13 +26,13 @@ const TABS = [
 export function AttendeesPanel({ eventId }: { eventId: string }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>(TABS[0])
   const [text, setText] = useState('')
-  const [page, setPage] = useState(1)
+  const pages = useCursorStack()
   const search = useDebouncedValue(text.trim(), 300)
 
   // Under the 'events' key, so anything that invalidates the event's data (a cancelled booking) reloads this too.
   const admissions = useQuery({
-    queryKey: ['events', eventId, 'admissions', tab.checkedIn, search, page],
-    queryFn: () => listEventAdmissions(eventId, { checkedIn: tab.checkedIn, search, page, pageSize: PAGE_SIZE }),
+    queryKey: ['events', eventId, 'admissions', tab.checkedIn, search, pages.cursor],
+    queryFn: () => listEventAdmissions(eventId, { checkedIn: tab.checkedIn, search, cursor: pages.cursor, page: 1, pageSize: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
   const data = admissions.data
@@ -63,7 +64,7 @@ export function AttendeesPanel({ eventId }: { eventId: string }) {
               value={text}
               onChange={(e) => {
                 setText(e.target.value)
-                setPage(1)
+                pages.reset()
               }}
             />
           </div>
@@ -75,7 +76,7 @@ export function AttendeesPanel({ eventId }: { eventId: string }) {
                 aria-pressed={tab.label === t.label}
                 onClick={() => {
                   setTab(t)
-                  setPage(1)
+                  pages.reset()
                 }}
                 className={`h-7.5 rounded-md px-3 text-sm font-medium ${tab.label === t.label ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
               >
@@ -132,7 +133,7 @@ export function AttendeesPanel({ eventId }: { eventId: string }) {
       </Table>
       {data && (
         <div className="border-t px-6 py-3">
-          <Pagination page={data.page} totalPages={data.totalPages} totalCount={data.totalCount} pageSize={data.pageSize} noun="attendees" onPageChange={setPage} />
+          <CursorPagination depth={pages.depth} count={data.items.length} pageSize={data.pageSize} totalCount={data.totalCount} nextCursor={data.nextCursor} noun="attendees" onPrev={pages.prev} onNext={pages.next} />
         </div>
       )}
     </section>

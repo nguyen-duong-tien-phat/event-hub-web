@@ -191,3 +191,41 @@ test('typing in the organizer filter searches organizers on the server', async (
   await waitFor(() => expect(userSearches.at(-1)).toBe('lin'))
   expect(await screen.findByRole('option', { name: 'Linh Pham' })).toBeInTheDocument()
 })
+
+test('Next sends the nextCursor, Previous goes back, and a filter returns to the first page', async () => {
+  server.use(
+    http.get(`${API_URL}/events`, ({ request }) => {
+      const url = new URL(request.url)
+      requests.push(url)
+      const second = url.searchParams.get('cursor') === 'c2'
+      return HttpResponse.json({
+        items: [{ ...rows[0], id: second ? 'e2' : 'e1', title: second ? 'Second page event' : 'First page event' }],
+        page: 1,
+        pageSize: 10,
+        totalCount: 11,
+        totalPages: 2,
+        nextCursor: second ? null : 'c2',
+      })
+    }),
+  )
+  const click = userEvent.setup()
+  renderPage('Organizer')
+  expect(await screen.findByText('First page event')).toBeInTheDocument()
+  expect(requests[0].searchParams.has('cursor')).toBe(false)
+  expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+  await click.click(screen.getByRole('button', { name: 'Next' }))
+  expect(await screen.findByText('Second page event')).toBeInTheDocument()
+  expect(requests.at(-1)!.searchParams.get('cursor')).toBe('c2')
+  expect(screen.getByText('Showing 11 to 11 of 11 events')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  await click.click(screen.getByRole('button', { name: 'Previous' }))
+  expect(await screen.findByText('First page event')).toBeInTheDocument()
+
+  await click.click(screen.getByRole('button', { name: 'Next' }))
+  await screen.findByText('Second page event')
+  await click.type(screen.getByLabelText('Search events by title'), 'jazz')
+  await waitFor(() => expect(requests.at(-1)!.searchParams.get('search')).toBe('jazz'))
+  expect(requests.at(-1)!.searchParams.has('cursor')).toBe(false)
+})

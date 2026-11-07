@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { deleteEvent, listCategories, listEvents, type EventListItem, type EventSort } from '@/api/events'
 import { useAuth } from '@/auth/useAuth'
 import { PageHeader } from '@/components/PageHeader'
-import { Pagination } from '@/components/Pagination'
+import { CursorPagination } from '@/components/Pagination'
 import { SearchSelect } from '@/components/SearchSelect'
 import { useOrganizerSearch } from '@/features/users/useOrganizerSearch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -27,6 +27,7 @@ import { formatDateTime } from '@/lib/dates'
 import { describeError } from '@/lib/errors'
 import { formatPriceRange } from '@/lib/formatMoney'
 import { stockBadgeClass, stockStatus } from '@/lib/stock'
+import { useCursorStack } from '@/lib/useCursorStack'
 import { useDebouncedValue } from '@/lib/useDebouncedValue'
 
 const PAGE_SIZE = 10
@@ -47,7 +48,7 @@ export function EventsPage() {
   const [category, setCategory] = useState('')
   const [sort, setSort] = useState<EventSort>('StartsAt')
   const [owner, setOwner] = useState('') // Admin's filter: '' everyone, 'me', or an organizer's id
-  const [page, setPage] = useState(1)
+  const pages = useCursorStack()
   const [toDelete, setToDelete] = useState<EventListItem | null>(null)
   const search = useDebouncedValue(searchInput.trim(), 300)
   // An Organizer only ever sees their own events; an Admin sees all unless they ask for theirs.
@@ -55,8 +56,8 @@ export function EventsPage() {
   const organizerSearch = useOrganizerSearch(isAdmin)
 
   const events = useQuery({
-    queryKey: ['events', { search, category, sort, organizerId, page }],
-    queryFn: () => listEvents({ search, category, sort, organizerId, page, pageSize: PAGE_SIZE }),
+    queryKey: ['events', { search, category, sort, organizerId, cursor: pages.cursor }],
+    queryFn: () => listEvents({ search, category, sort, organizerId, cursor: pages.cursor, page: 1, pageSize: PAGE_SIZE }),
     placeholderData: keepPreviousData,
   })
   const categories = useQuery({ queryKey: ['event-categories'], queryFn: listCategories })
@@ -76,7 +77,7 @@ export function EventsPage() {
 
   const reset = (apply: () => void) => {
     apply()
-    setPage(1)
+    pages.reset()
   }
   const data = events.data
   const columns = isAdmin ? 6 : 5
@@ -253,13 +254,15 @@ export function EventsPage() {
       )}
 
       {data && (
-        <Pagination
-          page={data.page}
-          totalPages={data.totalPages}
-          totalCount={data.totalCount}
+        <CursorPagination
+          depth={pages.depth}
+          count={data.items.length}
           pageSize={data.pageSize}
+          totalCount={data.totalCount}
+          nextCursor={data.nextCursor}
           noun="events"
-          onPageChange={setPage}
+          onPrev={pages.prev}
+          onNext={pages.next}
         />
       )}
 

@@ -220,3 +220,33 @@ test('the Attendees panel shows who is in and who is not, and filters and search
   await waitFor(() => expect(admissionRequests.at(-1)!.searchParams.get('search')).toBe('k7q4'))
 })
 
+
+test('the Attendees panel pages with the nextCursor and starts over when the tab changes', async () => {
+  server.use(
+    http.get(`${API_URL}/events/e1/admissions`, ({ request }) => {
+      const url = new URL(request.url)
+      admissionRequests.push(url)
+      const second = url.searchParams.get('cursor') === 'c2'
+      return HttpResponse.json({
+        items: [{ id: second ? 'a2' : 'a1', ticketType: 'General', shortCode: second ? 'SECOND22' : 'FIRST111', checkedInAt: null, checkedInBy: null, bookingId: 'b1', buyer: { id: 'u7', fullName: 'Bao Nguyen', email: 'bao@example.com' } }],
+        page: 1,
+        pageSize: 10,
+        totalCount: 11,
+        totalPages: 2,
+        nextCursor: second ? null : 'c2',
+      })
+    }),
+  )
+  const click = userEvent.setup()
+  renderPage()
+  const panel = await screen.findByRole('region', { name: 'Attendees' })
+  expect(await within(panel).findByText('FIRS T111')).toBeInTheDocument()
+
+  await click.click(within(panel).getByRole('button', { name: 'Next' }))
+  expect(await within(panel).findByText('SECO ND22')).toBeInTheDocument()
+  expect(admissionRequests.at(-1)!.searchParams.get('cursor')).toBe('c2')
+
+  await click.click(within(panel).getByRole('button', { name: 'Not yet' }))
+  await waitFor(() => expect(admissionRequests.at(-1)!.searchParams.get('checkedIn')).toBe('false'))
+  expect(admissionRequests.at(-1)!.searchParams.has('cursor')).toBe(false)
+})
