@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchSelect } from '@/components/SearchSelect'
 import { describeError } from '@/lib/errors'
 
 const schema = z.object({
@@ -105,18 +105,15 @@ export function CreateUserDialog() {
               control={control}
               name="role"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="role" className="h-9 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchSelect
+                  id="role"
+                  ariaLabel="Role"
+                  className="w-full"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={ROLES.map((r) => ({ value: r, label: r }))}
+                  searchPlaceholder="Search roles…"
+                />
               )}
             />
             <p className="text-[13px] text-muted-foreground">Attendee by default. Only admins can create accounts.</p>

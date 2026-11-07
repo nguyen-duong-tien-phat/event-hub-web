@@ -1,3 +1,4 @@
+import { CopyButton } from '@/components/CopyButton'
 import type { Role, UserDto } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { initials } from '@/lib/initials'
@@ -20,7 +21,14 @@ export function ProfileCard({ user }: { user: UserDto }) {
       </span>
       <div className="min-w-60 flex-1 leading-snug">
         <div className="text-base font-semibold">{user.fullName}</div>
-        <div className="text-muted-foreground">{user.email}</div>
+        <div className="flex items-center gap-1 text-muted-foreground">
+          {user.email}
+          <CopyButton value={user.email} label="email" />
+        </div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span title={user.id}>ID {user.id.slice(-8)}</span>
+          <CopyButton value={user.id} label="user id" />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge className={roleBadge[user.role]}>{user.role}</Badge>

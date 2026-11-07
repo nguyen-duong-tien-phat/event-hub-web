@@ -6,7 +6,9 @@ import { listUsers } from '@/api/users'
 import type { UserDto } from '@/api/types'
 import { useAuth } from '@/auth/useAuth'
 import { PageHeader } from '@/components/PageHeader'
+import { CopyButton } from '@/components/CopyButton'
 import { Pagination } from '@/components/Pagination'
+import { SearchSelect } from '@/components/SearchSelect'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,19 +69,19 @@ export function UsersPage() {
             }}
           />
         </div>
-        <select
-          aria-label="Status"
-          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        <SearchSelect
+          ariaLabel="Status"
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as Status)
+          onChange={(v) => {
+            setStatus(v as Status)
             setPage(1)
           }}
-        >
-          <option value="all">All accounts</option>
-          <option value="active">Active</option>
-          <option value="blocked">Blocked</option>
-        </select>
+          options={[
+            { value: 'all', label: 'All accounts' },
+            { value: 'active', label: 'Active' },
+            { value: 'blocked', label: 'Blocked' },
+          ]}
+        />
       </div>
 
       {users.isError && !data ? (
@@ -175,7 +177,10 @@ function UserRow({ user, isMe, busy, onChange }: { user: UserDto; isMe: boolean;
               {user.fullName}
               {isMe && ' (you)'}
             </Link>
-            <div className="text-[13px] text-muted-foreground">{user.email}</div>
+            <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
+              <span className="truncate">{user.email}</span>
+              <CopyButton value={user.email} label="email" />
+            </div>
           </div>
         </div>
       </TableCell>

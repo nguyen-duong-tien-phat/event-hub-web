@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { pick } from '@/test/pick'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { MemoryRouter, useLocation } from 'react-router'
@@ -85,7 +86,7 @@ test('sends the search text and the status filter to the API', async () => {
   await screen.findByText('Minh Le')
 
   await typing.type(screen.getByLabelText('Search users by name or email'), 'minh')
-  await typing.selectOptions(screen.getByLabelText('Status'), 'blocked')
+  await pick(typing, 'Status', 'Blocked')
 
   await waitFor(() => {
     const last = requests.at(-1)!

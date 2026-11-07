@@ -20,3 +20,10 @@ window.matchMedia ??= ((query: string) => ({
   addListener: () => {}, // next-themes still uses the legacy pair
   removeListener: () => {},
 })) as unknown as typeof window.matchMedia
+
+// cmdk (the searchable dropdown) measures its list.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}

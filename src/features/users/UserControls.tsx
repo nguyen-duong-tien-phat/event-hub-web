@@ -1,22 +1,21 @@
 import { ROLES, type Role, type UserDto } from '@/api/types'
+import { SearchSelect } from '@/components/SearchSelect'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: r }))
 
 export function RoleSelect({ user, disabled, onChange }: { user: UserDto; disabled: boolean; onChange: (role: Role) => void }) {
   return (
-    <Select value={user.role} disabled={disabled} onValueChange={(role) => onChange(role as Role)}>
-      <SelectTrigger aria-label={`Role of ${user.fullName}`} className="h-9 min-w-32">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {ROLES.map((r) => (
-          <SelectItem key={r} value={r}>
-            {r}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SearchSelect
+      ariaLabel={`Role of ${user.fullName}`}
+      className="min-w-32"
+      value={user.role}
+      disabled={disabled}
+      onChange={(role) => onChange(role as Role)}
+      options={ROLE_OPTIONS}
+      searchPlaceholder="Search roles…"
+    />
   )
 }
 
