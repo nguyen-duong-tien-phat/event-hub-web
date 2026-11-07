@@ -22,7 +22,7 @@ export interface Booking {
   totalPrice: number // with the service fee
   status: BookingStatus
   createdAt: string // UTC
-  event?: { id: string; title: string } // the booked event (the managed and by-event lists fill it)
+  event?: { id: string; title: string; startsAt?: string; location?: string } // the booked event (the managed and by-event lists fill it)
   buyer?: { id: string; fullName: string; email: string }
   admissions: Admission[] // empty until Confirmed
   checkedInCount: number
@@ -42,10 +42,11 @@ export const getBooking = (id: string) => api<BookingDetail>(`/bookings/${id}`)
 export const listEventBookings = (eventId: string, page: number, pageSize: number) =>
   api<Paged<Booking>>(`/bookings/by-event/${eventId}?${new URLSearchParams({ page: String(page), pageSize: String(pageSize) })}`)
 
-// Bookings across events: all for an Admin, those of their own events for an Organizer; eventId and status narrow it.
-export const listManagedBookings = ({ eventId, status, page, pageSize }: { eventId?: string; status?: BookingStatus; page: number; pageSize: number }) => {
+// Bookings across events: all for an Admin, those of their own events for an Organizer; eventId, userId and status narrow it.
+export const listManagedBookings = ({ eventId, userId, status, page, pageSize }: { eventId?: string; userId?: string; status?: BookingStatus; page: number; pageSize: number }) => {
   const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   if (eventId) query.set('eventId', eventId)
+  if (userId) query.set('userId', userId) // one buyer's history
   if (status) query.set('status', status)
   return api<Paged<Booking>>(`/bookings/managed?${query}`)
 }

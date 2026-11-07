@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { describeError } from '@/lib/errors'
 import { formatMoney } from '@/lib/formatMoney'
+import { AttendeeHistory } from './AttendeeHistory'
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
@@ -33,6 +34,7 @@ export function UserActivity({ userId, name, role, showEvents = true }: { userId
     queries: items.map((e) => ({ queryKey: ['events', e.id, 'stats'], queryFn: () => getEventStats(e.id) })),
   })
 
+  if (role === 'Attendee') return <AttendeeHistory userId={userId} name={name} />
   if (role !== 'Organizer') {
     return (
       <section className="flex min-h-30 items-center justify-center rounded-xl border border-dashed bg-sidebar p-6 text-center text-muted-foreground">
