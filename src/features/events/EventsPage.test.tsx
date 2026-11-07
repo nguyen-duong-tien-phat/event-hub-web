@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { pick } from '@/test/pick'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { MemoryRouter, useLocation } from 'react-router'
@@ -29,7 +30,18 @@ const rows: EventListItem[] = [
 ]
 
 let requests: URL[] = []
+let userSearches: (string | null)[] = []
 const server = setupServer(
+  http.get(`${API_URL}/users`, ({ request }) => {
+    userSearches.push(new URL(request.url).searchParams.get('search'))
+    return HttpResponse.json({
+      items: [{ id: 'u9', fullName: 'Linh Pham', email: 'linh@example.com', role: 'Organizer', isActive: true, createdAt: '', updatedAt: '' }],
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      totalPages: 1,
+    })
+  }),
   http.get(`${API_URL}/events/categories`, () => HttpResponse.json(['Concerts', 'Food'])),
   http.get(`${API_URL}/events`, ({ request }) => {
     requests.push(new URL(request.url))
@@ -40,6 +52,7 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   requests = []
+  userSearches = []
 })
 afterAll(() => server.close())
 
@@ -73,8 +86,9 @@ test('an Organizer only asks for their own events, with search, category and sor
   expect(screen.queryByRole('button', { name: 'My events' })).not.toBeInTheDocument()
 
   await typing.type(screen.getByLabelText('Search events by title'), 'echo')
-  await typing.selectOptions(await screen.findByLabelText('Category'), 'Food')
-  await typing.selectOptions(screen.getByLabelText('Sort by'), 'Newest')
+  await screen.findByRole('combobox', { name: 'Category' })
+  await pick(typing, 'Category', 'Food')
+  await pick(typing, 'Sort by', 'Newest added')
 
   await waitFor(() => {
     const last = requests.at(-1)!.searchParams
@@ -85,15 +99,25 @@ test('an Organizer only asks for their own events, with search, category and sor
   })
 })
 
-test('an Admin sees all events until they ask for their own', async () => {
+test("an Admin sees all events until they pick an organizer, or their own", async () => {
   const click = userEvent.setup()
   renderPage('Admin')
   await screen.findByText('Midnight Echoes Live')
   expect(requests[0].searchParams.has('organizerId')).toBe(false)
+  await pick(click, 'Organizer', 'Linh Pham')
+  await waitFor(() => expect(requests.at(-1)!.searchParams.get('organizerId')).toBe('u9'))
 
-  await click.click(screen.getByRole('button', { name: 'My events' }))
-
+  await pick(click, 'Organizer', 'My events')
   await waitFor(() => expect(requests.at(-1)!.searchParams.get('organizerId')).toBe('u2'))
+
+  await pick(click, 'Organizer', 'All organizers')
+  await waitFor(() => expect(requests.at(-1)!.searchParams.has('organizerId')).toBe(false))
+})
+
+test('an Organizer gets no organizer filter', async () => {
+  renderPage('Organizer')
+  await screen.findByText('Midnight Echoes Live')
+  expect(screen.queryByLabelText('Organizer')).not.toBeInTheDocument()
 })
 
 test('deleting an event that has bookings shows the API message', async () => {
@@ -133,4 +157,37 @@ test('clicking a row opens the event, but clicking its menu does not', async () 
 
   await click.click(screen.getByRole('cell', { name: 'Concerts' }))
   expect(screen.getByTestId('path')).toHaveTextContent('/events/e1')
+})
+
+test("an Admin's Organizer column links to that user, or to My profile for their own events", async () => {
+  server.use(
+    http.get(`${API_URL}/events`, () =>
+      HttpResponse.json({
+        items: [
+          { ...rows[0], id: 'e1', title: 'Theirs', organizer: { id: 'u9', fullName: 'Linh Pham' } },
+          { ...rows[0], id: 'e2', title: 'Mine', organizer: { id: 'u2', fullName: 'Minh Le' } },
+        ],
+        page: 1,
+        pageSize: 10,
+        totalCount: 2,
+        totalPages: 1,
+      }),
+    ),
+  )
+  renderPage('Admin')
+
+  expect(await screen.findByRole('link', { name: 'Linh Pham' })).toHaveAttribute('href', '/users/u9')
+  expect(screen.getByRole('link', { name: 'Minh Le' })).toHaveAttribute('href', '/profile')
+})
+
+test('typing in the organizer filter searches organizers on the server', async () => {
+  const typing = userEvent.setup()
+  renderPage('Admin')
+  await screen.findByText('Midnight Echoes Live')
+
+  await typing.click(screen.getByRole('combobox', { name: 'Organizer' }))
+  await typing.type(screen.getByPlaceholderText('Search organizers…'), 'lin')
+
+  await waitFor(() => expect(userSearches.at(-1)).toBe('lin'))
+  expect(await screen.findByRole('option', { name: 'Linh Pham' })).toBeInTheDocument()
 })

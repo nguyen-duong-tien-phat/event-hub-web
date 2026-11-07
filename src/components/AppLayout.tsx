@@ -1,4 +1,4 @@
-import { CalendarDays, Users, type LucideIcon } from 'lucide-react'
+import { CalendarDays, PanelLeft, Ticket, Users, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '@/auth/useAuth'
@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { initials } from '@/lib/initials'
 import { cn } from '@/lib/utils'
 import { PageFooterSlot, PageHeaderSlot } from './pageHeaderSlot'
+
+const SIDEBAR_KEY = 'eventhub.sidebarOpen'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   cn(
@@ -25,6 +27,22 @@ function NavItem({ to, icon: Icon, children }: { to: string; icon: LucideIcon; c
 
 export function AppLayout() {
   const { user, logout } = useAuth()
+  // The choice is remembered per browser; storage can be blocked, then the sidebar simply starts open.
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) !== 'false'
+    } catch {
+      return true
+    }
+  })
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen)
+    try {
+      localStorage.setItem(SIDEBAR_KEY, String(!sidebarOpen))
+    } catch {
+      /* not remembered */
+    }
+  }
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null)
   const [footerSlot, setFooterSlot] = useState<HTMLElement | null>(null)
 
@@ -32,7 +50,7 @@ export function AppLayout() {
     // From md up the frame is a fixed box covering the window (the same in every browser, unlike a vh or % height chain): sidebar and header stay put and only <main> scrolls.
     // Narrower, the sidebar stacks on top and the whole page scrolls.
     <div className="flex min-h-dvh flex-col md:fixed md:inset-0 md:min-h-0 md:flex-row md:overflow-hidden">
-      <aside className="flex flex-col gap-4 border-b bg-sidebar px-3 py-4 md:w-60 md:shrink-0 md:overflow-hidden md:border-r md:border-b-0">
+      <aside id="sidebar" hidden={!sidebarOpen} className="flex flex-col gap-4 border-b bg-sidebar px-3 py-4 md:w-60 md:shrink-0 md:overflow-hidden md:border-r md:border-b-0">
         <div className="flex min-h-8 items-center gap-2 px-2.5">
           <span
             aria-hidden="true"
@@ -50,6 +68,9 @@ export function AppLayout() {
           )}
           <NavItem to="/events" icon={CalendarDays}>
             Events
+          </NavItem>
+          <NavItem to="/bookings" icon={Ticket}>
+            Bookings
           </NavItem>
         </nav>
         <div className="flex shrink-0 flex-col gap-3 border-t pt-3">
@@ -81,10 +102,19 @@ export function AppLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col md:min-h-0">
-        <header
-          ref={setHeaderSlot}
-          className="flex min-h-14 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-8"
-        />
+        <div className="flex min-h-14 shrink-0 items-center gap-2 border-b pl-4 pr-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            aria-expanded={sidebarOpen}
+            aria-controls="sidebar"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft aria-hidden="true" />
+          </Button>
+          <header ref={setHeaderSlot} className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3" />
+        </div>
         <main className="min-w-0 flex-1 p-8 md:overflow-y-auto">
           <PageHeaderSlot.Provider value={headerSlot}>
             <PageFooterSlot.Provider value={footerSlot}>

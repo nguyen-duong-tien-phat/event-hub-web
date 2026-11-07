@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { pick } from '@/test/pick'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -128,10 +129,8 @@ test('an admin can create the event for an organizer picked from the list', asyn
   const typing = userEvent.setup()
   renderAt('/events/new')
 
-  const organizer = await screen.findByLabelText('Organizer')
-  await within(organizer).findByRole('option', { name: 'Minh Le (minh@example.com)' })
-  expect(within(organizer).getByRole('option', { name: 'Me (Ann Tran)' })).toBeInTheDocument()
-  await typing.selectOptions(organizer, 'u2')
+  await screen.findByRole('combobox', { name: 'Organizer' })
+  await pick(typing, 'Organizer', 'Minh Le')
   await fillNewEvent(typing)
 
   await waitFor(() => expect(created).toHaveLength(1))

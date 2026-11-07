@@ -8,9 +8,9 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { ApiError } from '@/api/client'
 import { createEvent, getEvent, listCategories, updateEvent, type EventDetail } from '@/api/events'
-import { listUsers } from '@/api/users'
 import { POSTER_TYPES, uploadPoster, validatePoster } from '@/api/uploads'
 import { useAuth } from '@/auth/useAuth'
+import { SearchSelect } from '@/components/SearchSelect'
 import { PageFooter } from '@/components/PageFooter'
 import { PageHeader } from '@/components/PageHeader'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { fromLocalInput } from '@/lib/dates'
 import { useGoBack } from '@/lib/useGoBack'
 import { describeError } from '@/lib/errors'
+import { useOrganizerSearch } from '@/features/users/useOrganizerSearch'
 import { buildPatch, cleanHighlights, toFormValues, type EventFormValues } from './eventDiff'
 
 const schema = z.object({
@@ -66,12 +67,7 @@ function EventForm({ event }: { event?: EventDetail }) {
   // Only an admin creating an event can pick whose it is ('' is the admin's own); editing never changes the organizer.
   const canPickOrganizer = !event && user?.role === 'Admin'
   const [organizerId, setOrganizerId] = useState('')
-  // shortcut: the first 100 active organizers; add a search box if there are ever more.
-  const organizers = useQuery({
-    queryKey: ['users', 'organizers'],
-    queryFn: () => listUsers({ search: '', role: 'Organizer', isActive: true, page: 1, pageSize: 100 }),
-    enabled: canPickOrganizer,
-  })
+  const organizerSearch = useOrganizerSearch(canPickOrganizer)
   const [poster, setPoster] = useState<File | null>(null)
   const [posterError, setPosterError] = useState<string>()
   const [formError, setFormError] = useState<string>()
@@ -152,20 +148,17 @@ function EventForm({ event }: { event?: EventDetail }) {
         {canPickOrganizer && (
           <div className={field}>
             <Label htmlFor="organizer">Organizer</Label>
-            <select
+            <SearchSelect
               id="organizer"
-              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              ariaLabel="Organizer"
+              className="w-full"
               value={organizerId}
-              onChange={(e) => setOrganizerId(e.target.value)}
-            >
-              <option value="">Me ({user?.fullName})</option>
-              {organizers.data?.items.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.fullName} ({o.email})
-                </option>
-              ))}
-            </select>
-            {organizers.isError && <p className="text-[13px] text-destructive">{describeError(organizers.error)}</p>}
+              onChange={setOrganizerId}
+              options={[{ value: '', label: `Me (${user?.fullName})` }, ...organizerSearch.options]}
+              searchPlaceholder="Search organizers…"
+              onSearchChange={organizerSearch.onSearchChange}
+              loading={organizerSearch.loading}
+            />
           </div>
         )}
         <div className={field}>

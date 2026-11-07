@@ -40,9 +40,13 @@ const booking = (id: string, name: string, status: string) => ({
   totalPrice: 50.5,
   status,
   createdAt: '2030-10-01T10:00:00Z',
+  admissions: [],
+  checkedInCount: 0,
+  canCancel: status !== 'Cancelled',
   buyer: { id: `b-${id}`, fullName: name, email: `${name.split(' ')[0].toLowerCase()}@example.com` },
 })
 
+let admissionRequests: URL[] = []
 let calls: { method: string; path: string; body?: unknown }[] = []
 const record = async (request: Request) =>
   calls.push({ method: request.method, path: new URL(request.url).pathname, body: request.method === 'GET' ? undefined : await request.json().catch(() => undefined) })
@@ -58,6 +62,19 @@ const server = setupServer(
       totalPages: 1,
     }),
   ),
+  http.get(`${API_URL}/events/e1/admissions`, ({ request }) => {
+    admissionRequests.push(new URL(request.url))
+    return HttpResponse.json({
+      items: [
+        { id: 'a1', ticketType: 'General', shortCode: 'K7Q49XMD', checkedInAt: '2030-11-14T19:42:00Z', checkedInBy: { id: 's1', fullName: 'Linh Pham' }, bookingId: 'b1', buyer: { id: 'u7', fullName: 'Bao Nguyen', email: 'bao@example.com' } },
+        { id: 'a2', ticketType: 'VIP', shortCode: 'B2C3D4E5', checkedInAt: null, checkedInBy: null, bookingId: 'b3', buyer: { id: 'u8', fullName: 'Hoa Vo', email: 'hoa@example.com' } },
+      ],
+      page: 1,
+      pageSize: 10,
+      totalCount: 2,
+      totalPages: 1,
+    })
+  }),
   http.post(`${API_URL}/tickets`, async ({ request }) => {
     await record(request)
     return HttpResponse.json({})
@@ -75,6 +92,7 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   calls = []
+  admissionRequests = []
 })
 afterAll(() => server.close())
 
@@ -103,9 +121,10 @@ test('shows the event, the sales numbers, its tickets and bookings', async () =>
   expect(within(summary).getByText('Without $83.64 in service fees')).toBeInTheDocument()
   expect(within(summary).getByText('264')).toBeInTheDocument()
   expect(within(summary).getByText('12 held by pending bookings')).toBeInTheDocument()
-  expect(await screen.findByText('Bao Nguyen')).toBeInTheDocument()
-  expect(screen.getByText('bao@example.com')).toBeInTheDocument()
-  expect(screen.getAllByText('2 × General')).toHaveLength(2)
+  const bookingsPanel = screen.getByRole('region', { name: 'Bookings' })
+  expect(await within(bookingsPanel).findByText('Bao Nguyen')).toBeInTheDocument()
+  expect(within(bookingsPanel).getByText('bao@example.com')).toBeInTheDocument()
+  expect(within(bookingsPanel).getAllByText('2 × General')).toHaveLength(2)
 })
 
 test('adds a ticket with POST /tickets', async () => {
@@ -181,3 +200,23 @@ test("someone else's event shows the API's 403 and none of its data", async () =
   expect(screen.queryByRole('region', { name: 'Sales summary' })).not.toBeInTheDocument()
   expect(screen.queryByText('Bao Nguyen')).not.toBeInTheDocument()
 })
+
+test('the Attendees panel shows who is in and who is not, and filters and searches on the server', async () => {
+  const click = userEvent.setup()
+  renderPage()
+
+  const panel = await screen.findByRole('region', { name: 'Attendees' })
+  expect(await within(panel).findByText('K7Q4 9XMD')).toBeInTheDocument()
+  expect(within(panel).getByText(/Checked in .* by Linh Pham/)).toBeInTheDocument()
+  expect(within(within(panel).getByText('Hoa Vo').closest('tr')!).getByText('Not yet')).toBeInTheDocument()
+  expect(admissionRequests[0].searchParams.has('checkedIn')).toBe(false)
+
+  await click.click(within(panel).getByRole('button', { name: 'Checked in' }))
+  await waitFor(() => expect(admissionRequests.at(-1)!.searchParams.get('checkedIn')).toBe('true'))
+  await click.click(within(panel).getByRole('button', { name: 'Not yet' }))
+  await waitFor(() => expect(admissionRequests.at(-1)!.searchParams.get('checkedIn')).toBe('false'))
+
+  await click.type(within(panel).getByLabelText('Search attendees'), 'k7q4')
+  await waitFor(() => expect(admissionRequests.at(-1)!.searchParams.get('search')).toBe('k7q4'))
+})
+

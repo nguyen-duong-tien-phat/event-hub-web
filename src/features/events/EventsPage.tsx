@@ -7,6 +7,8 @@ import { deleteEvent, listCategories, listEvents, type EventListItem, type Event
 import { useAuth } from '@/auth/useAuth'
 import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
+import { SearchSelect } from '@/components/SearchSelect'
+import { useOrganizerSearch } from '@/features/users/useOrganizerSearch'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,8 +37,6 @@ const SORTS: { value: EventSort; label: string }[] = [
 ]
 // Clicks on these keep their own meaning; anywhere else on a row opens the event.
 const INTERACTIVE = 'a,button,input,select,[role=menu],[role=menuitem]'
-const selectClass =
-  'h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 
 export function EventsPage() {
   const { user } = useAuth()
@@ -46,12 +46,13 @@ export function EventsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [category, setCategory] = useState('')
   const [sort, setSort] = useState<EventSort>('StartsAt')
-  const [mine, setMine] = useState(false)
+  const [owner, setOwner] = useState('') // Admin's filter: '' everyone, 'me', or an organizer's id
   const [page, setPage] = useState(1)
   const [toDelete, setToDelete] = useState<EventListItem | null>(null)
   const search = useDebouncedValue(searchInput.trim(), 300)
   // An Organizer only ever sees their own events; an Admin sees all unless they ask for theirs.
-  const organizerId = !isAdmin || mine ? user?.id : undefined
+  const organizerId = !isAdmin || owner === 'me' ? user?.id : owner || undefined
+  const organizerSearch = useOrganizerSearch(isAdmin)
 
   const events = useQuery({
     queryKey: ['events', { search, category, sort, organizerId, page }],
@@ -106,48 +107,33 @@ export function EventsPage() {
             onChange={(e) => reset(() => setSearchInput(e.target.value))}
           />
         </div>
-        <select
-          aria-label="Category"
-          className={selectClass}
+        <SearchSelect
+          ariaLabel="Category"
           value={category}
-          onChange={(e) => reset(() => setCategory(e.target.value))}
-        >
-          <option value="">All categories</option>
-          {categories.data?.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Sort by"
-          className={selectClass}
+          onChange={(v) => reset(() => setCategory(v))}
+          options={[{ value: '', label: 'All categories' }, ...(categories.data ?? []).map((c) => ({ value: c, label: c }))]}
+        />
+        <SearchSelect
+          ariaLabel="Sort by"
           value={sort}
-          onChange={(e) => reset(() => setSort(e.target.value as EventSort))}
-        >
-          {SORTS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => reset(() => setSort(v as EventSort))}
+          options={SORTS}
+        />
         {isAdmin && (
-          <div role="group" aria-label="Whose events" className="ml-auto flex gap-0.5 rounded-lg bg-muted p-[3px]">
-            {[
-              { label: 'All events', value: false },
-              { label: 'My events', value: true },
-            ].map((o) => (
-              <button
-                key={o.label}
-                type="button"
-                aria-pressed={mine === o.value}
-                onClick={() => reset(() => setMine(o.value))}
-                className={`h-7.5 rounded-md px-3 text-sm font-medium ${mine === o.value ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
+          <SearchSelect
+            ariaLabel="Organizer"
+            className="ml-auto"
+            value={owner}
+            onChange={(v) => reset(() => setOwner(v))}
+            options={[
+              { value: '', label: 'All organizers' },
+              { value: 'me', label: 'My events' },
+              ...organizerSearch.options,
+            ]}
+            searchPlaceholder="Search organizers…"
+            onSearchChange={organizerSearch.onSearchChange}
+            loading={organizerSearch.loading}
+          />
         )}
       </div>
 
@@ -221,7 +207,17 @@ export function EventsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="truncate px-4 py-3 text-foreground/80">{e.category}</TableCell>
-                  {isAdmin && <TableCell className="truncate px-4 py-3 text-foreground/80">{e.organizer.fullName}</TableCell>}
+                  {isAdmin && (
+                    <TableCell className="truncate px-4 py-3">
+                      {/* The organizer's page; your own events lead to your profile, which has no admin controls. */}
+                      <Link
+                        to={e.organizer.id === user?.id ? '/profile' : `/users/${e.organizer.id}`}
+                        className="text-foreground/80 hover:text-foreground hover:underline"
+                      >
+                        {e.organizer.fullName}
+                      </Link>
+                    </TableCell>
+                  )}
                   <TableCell className="px-4 py-3">
                     <TicketStock total={e.totalQuantity} remaining={e.remainingQuantity} />
                   </TableCell>

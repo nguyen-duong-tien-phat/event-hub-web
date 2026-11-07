@@ -3,6 +3,8 @@ import { AuthProvider } from '@/auth/AuthProvider'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { RequireRole } from '@/auth/RequireRole'
 import { AppLayout } from '@/components/AppLayout'
+import { BookingDetailPage } from '@/features/bookings/BookingDetailPage'
+import { BookingsPage } from '@/features/bookings/BookingsPage'
 import { EventDetailPage } from '@/features/events/EventDetailPage'
 import { EventFormPage } from '@/features/events/EventFormPage'
 import { EventsPage } from '@/features/events/EventsPage'
@@ -22,6 +24,8 @@ function App() {
               <Route index element={<Navigate to="/events" replace />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="events" element={<EventsPage />} />
+              <Route path="bookings" element={<BookingsPage />} />
+              <Route path="bookings/:id" element={<BookingDetailPage />} />
               <Route path="events/new" element={<EventFormPage />} />
               <Route path="events/:id" element={<EventDetailPage />} />
               <Route path="events/:id/edit" element={<EventFormPage />} />

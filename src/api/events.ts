@@ -108,3 +108,24 @@ export interface EventStats {
 
 export const getEventStats = (id: string) =>
   api<EventStats>(`/events/${id}/stats`);
+
+// GET /events/{id}/admissions: who holds a ticket and whether they got in (the event's organizer or an admin).
+export interface EventAdmission {
+  id: string
+  ticketType: string
+  shortCode: string
+  checkedInAt: string | null // UTC
+  checkedInBy: { id: string; fullName: string } | null
+  bookingId: string
+  buyer: { id: string; fullName: string; email: string }
+}
+
+export const listEventAdmissions = (
+  eventId: string,
+  { checkedIn, search, page, pageSize }: { checkedIn?: boolean; search: string; page: number; pageSize: number },
+) => {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (checkedIn !== undefined) query.set('checkedIn', String(checkedIn))
+  if (search) query.set('search', search)
+  return api<Paged<EventAdmission>>(`/events/${eventId}/admissions?${query}`)
+}
